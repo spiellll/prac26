@@ -155,8 +155,12 @@ PostgreSQL имеет срок 30 дней. Поэтому бесплатный 
 или другой сервер. Инструкции Render, VPS, nginx, screen и DBeaver:
 [practice/DEPLOYMENT.md](practice/DEPLOYMENT.md).
 
-**Публичная ссылка:** добавляется только после успешной публикации и проверки.
-Подготовленный Blueprint не является работающим демо.
+**Работающее демо:** [ritm-practice.onrender.com](https://ritm-practice.onrender.com/).
+Проверка API и подключения к PostgreSQL:
+[/api/v1/health](https://ritm-practice.onrender.com/api/v1/health).
+Опубликовано и проверено 3 ноября 2026 года из ветки `ritm-fitness-practice`.
+Подтверждены Docker-сборка на Render, CRUD и изоляция дневников посетителей.
+После простоя бесплатный сервер может открываться около минуты.
 
 ## Возможности дневника
 
