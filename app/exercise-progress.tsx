@@ -1,0 +1,30 @@
+'use client';
+import {useEffect,useMemo,useRef,useState} from 'react';
+import {exerciseCatalog,shortDate,daysBetween,type Entry} from '@/lib/fitness';
+import {exercisePoints,type SetPoint} from '@/lib/progress';
+import {Choice} from './entry-editor';
+const num=(v:number)=>v.toLocaleString('ru-RU',{maximumFractionDigits:2});
+export default function ExerciseProgress({entries,now}:{entries:Entry[];now:string}){
+ const catalog=useMemo(()=>exerciseCatalog(entries),[entries]);
+ const [key,setKey]=useState(''),[days,setDays]=useState(90),[selected,setSelected]=useState<string|null>(null);
+ const current=catalog.find(x=>x.key===key)??catalog[0];
+ const chartRef=useRef<HTMLDivElement>(null);const [chartWidth,setChartWidth]=useState(650);
+ const points=current?exercisePoints(entries,current.key,now,days):[];
+ useEffect(()=>{if(!chartRef.current)return;const observer=new ResizeObserver(([entry])=>setChartWidth(Math.floor(entry.contentRect.width)));observer.observe(chartRef.current);return()=>observer.disconnect()},[current?.key,points.length]);
+ const dates=[...new Set(points.map(p=>p.date))],weights=points.map(p=>p.weight);
+ const dated=(date:string)=>shortDate(date,dates.some(d=>d.slice(0,4)!==now.slice(0,4)));
+ const max=Math.max(1,...weights),min=Math.min(0,...weights),height=360,top=45,bottom=60,left=65,right=55,plotHeight=height-top-bottom;
+ const y=(value:number)=>top+(max-value)/(max-min||1)*plotHeight;
+ // Keep the real weight coordinate. Distribute overlapping labels horizontally
+ // within their date column, rather than inventing a different weight.
+ const placed=new Map<string,{point:SetPoint;lane:number}[]>();let laneCount=1;
+ for(const date of dates){const lanes:number[][]=[],list:{point:SetPoint;lane:number}[]=[];for(const p of points.filter(p=>p.date===date)){let lane=lanes.findIndex(ys=>ys.every(v=>Math.abs(v-y(p.weight))>=30));if(lane<0){lane=lanes.length;lanes.push([]);}lanes[lane].push(y(p.weight));list.push({point:p,lane});}laneCount=Math.max(laneCount,lanes.length);placed.set(date,list);}
+ const spacing=Math.max(100,laneCount*38+25),span=dates.length?daysBetween(dates[0],dates.at(-1)!):0;
+ const minGap=dates.length>1?Math.min(...dates.slice(1).map((d,i)=>daysBetween(dates[i],d))):1;
+ const width=Math.max(650,chartWidth,left+right+spacing+span/Math.max(1,minGap)*spacing);
+ const x=(date:string)=>span?left+spacing/2+daysBetween(dates[0],date)/span*(width-left-right-spacing):width/2;
+ const ticks=Array.from({length:5},(_,i)=>min+(max-min)*i/4);
+ const focus=points.find(p=>p.id===selected);
+ return <section className="card exercise-progress"><div className="card-heading"><div><h2>Прогресс по упражнениям</h2><p>Каждый подход: вес снаряда и число повторений</p></div><Choice label="Период графика упражнений" value={String(days)} onChange={v=>{setDays(Number(v));setSelected(null)}} options={[{value:'30',label:'30 дней'},{value:'90',label:'90 дней'},{value:'0',label:'Вся история'}]}/></div>{!current?<p className="chart-empty">Запиши упражнение — здесь появится его история.</p>:<><div className="exercise-chart-select"><Choice label="Упражнение для графика" value={current.key} onChange={v=>{setKey(v);setSelected(null)}} options={catalog.map(x=>({value:x.key,label:x.name}))}/><span>Подходов: {points.length} · Дней: {dates.length}</span></div>{!points.length?<div className="chart-empty"><p>В этом периоде подходов нет. Выбери другой период.</p></div>:<><div ref={chartRef} className="chart-scroll exercise-scatter" tabIndex={0} aria-label="График подходов, можно прокручивать по горизонтали"><svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${current.name}: X — дата, Y — вес снаряда; числа — повторения`}>
+ <text x={left} y={20} className="axis-title">Вес снаряда, кг</text>{ticks.map(v=><g key={v}><line x1={left} x2={width-right} y1={y(v)} y2={y(v)} className="chart-gridline"/><text x={left-10} y={y(v)+4} textAnchor="end" className="axis-tick">{num(v)}</text></g>)}<line x1={left} x2={left} y1={top} y2={height-bottom} className="chart-axis"/>{dates.map(date=><g key={date}><line x1={x(date)} x2={x(date)} y1={top-10} y2={height-bottom} className="chart-date-line"/><text x={x(date)} y={height-bottom+27} textAnchor="middle" className="axis-tick">{dated(date)}</text>{placed.get(date)!.map(({point:p,lane})=>{const localLanes=Math.max(...placed.get(date)!.map(v=>v.lane))+1,px=x(date)+(lane-(localLanes-1)/2)*38;return <g key={p.id} role="button" tabIndex={0} className={`set-marker ${p.warmup?'warmup':''} ${selected===p.id?'active':''}`} aria-label={`${dated(date)}, ${num(p.weight)} кг, ${p.reps} повторений, подход ${p.setIndex}${p.warmup?', разминка':''}`} onClick={()=>setSelected(p.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(p.id)}}}><rect x={px-17} y={y(p.weight)-13} width={34} height={26} rx={8}/><text x={px} y={y(p.weight)+4} textAnchor="middle">{p.reps}</text></g>})}</g>)}<text x={width-right} y={height-6} textAnchor="end" className="axis-title">Дата</text></svg></div><div className="scatter-legend"><span><i/>Рабочий подход</span><span><i className="warmup"/>Разминка</span><span>Число внутри — повторения</span></div><div className="chart-selection" aria-live="polite">{focus?<><strong>{shortDate(focus.date,true)} · {num(focus.weight)} кг × {focus.reps} повторений</strong><span>Подход {focus.setIndex}{focus.warmup?' · разминка':''}</span></>:'Нажми на число, чтобы посмотреть подход.'}</div><p className="field-help">Одна метка — один подход. Метки одной даты разнесены по горизонтали, чтобы не перекрываться. 0 кг — без дополнительного веса. Вес снаряда сам по себе не измеряет интенсивность.</p><details className="chart-details"><summary>Все подходы таблицей ({points.length})</summary><div className="table-scroll"><table><thead><tr><th>Дата</th><th>Подход</th><th>Вес, кг</th><th>Повторения</th><th>Тип</th></tr></thead><tbody>{points.map(p=><tr key={p.id}><td>{shortDate(p.date,true)}</td><td>{p.setIndex}</td><td>{num(p.weight)}</td><td>{p.reps}</td><td>{p.warmup?'Разминка':'Рабочий'}</td></tr>)}</tbody></table></div></details></>}</>}</section>;
+}

@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import ts from 'typescript';
+const moduleUrl=source=>'data:text/javascript;base64,'+Buffer.from(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText).toString('base64');
+const f=await import(moduleUrl(readFileSync('lib/fitness.ts','utf8')));
+const v=await import(moduleUrl(readFileSync('lib/validation.ts','utf8').replace("'zod'",JSON.stringify(import.meta.resolve('zod')))));
+assert.equal(f.WORKOUT_PLANS.length,4);
+assert.deepEqual(f.WORKOUT_PLANS.map(x=>x.exercises.length),[11,10,10,9]);
+for(const p of f.WORKOUT_PLANS){assert.equal(p.exercises[0].targetReps,100);assert.equal(p.exercises[1].tracking,'activity');assert.equal(p.exercises[2].warmup,true);assert.equal(p.exercises[3].name,'Вакуум');assert.ok(p.exercises.every(x=>!('sets' in x)),'Templates do not invent completed sets');}
+const migrated=f.normalizeProfile({cycle:f.LEGACY_CYCLE,goal:'My goal'});assert.equal(migrated.goal,'My goal');assert.deepEqual(migrated.cycle,f.WORKOUT_PLANS.map(p=>p.name));
+assert.deepEqual(f.normalizeProfile({cycle:['a','b','c','d']}).cycle,['a','b','c','d'],'Custom cycle names are preserved');
+const base={id:'f9a1c3a3-5a9a-4dac-91ea-ceaa82b92282',kind:'workout',date:'2026-09-10',createdAt:'2026-09-10T10:00:00Z',title:'QA',text:'',value:null,cycleIndex:0};
+const activity={name:'Вакуум',groups:['core'],tracking:'activity',notes:'3 раза по 20 секунд',sets:[]};
+const lift={name:'Бицепс',groups:['biceps','forearms'],targetReps:100,sets:[{reps:10,weight:12.5,effort:'moderate',warmup:false}]};
+const entry={...base,exercises:[activity,lift]};
+assert.equal(v.entrySchema.safeParse(entry).success,true);
+assert.equal(v.entrySchema.safeParse({...entry,exercises:[{...lift,sets:[]}]}).success,false);
+assert.equal(v.entrySchema.safeParse({...entry,exercises:[{...activity,sets:lift.sets}]}).success,false);
+assert.deepEqual(f.normalizeEntry(entry),entry,'Activity metadata survives reads');
+const stats=f.muscleStats([entry],30,'2026-09-10');assert.equal(stats.find(x=>x.id==='core').sets,0);assert.equal(stats.find(x=>x.id==='biceps').sets,1);assert.equal(stats.find(x=>x.id==='forearms').sets,1);assert.equal(stats.find(x=>x.id==='arms').sets,0);
+assert.equal(f.nextCycle([entry],f.defaultProfile,'2026-09-28'),1,'Next workout follows saved stage across rest days');
+assert.equal(f.nextCycle([{...entry,date:'2026-10-01',cycleIndex:3},entry],f.defaultProfile,'2026-09-28'),1,'Future workout cannot advance current cycle');
+assert.equal(f.nextCycle([{...entry,cycleIndex:3}],f.defaultProfile,'2026-09-28'),0);
+const context=f.diaryContext([entry],f.defaultProfile,'2026-09-28');assert.equal(context.trainingCycle.plans.length,4);assert.equal(context.trainingCycle.nextIndex,1);assert.ok(context.trainingCycle.note.includes('не означает'));
+assert.equal(f.exerciseKey('предплечье штанга'),f.exerciseKey('Предплечья со штангой'));
+assert.equal(f.exerciseKey('спина вертикальный блок'),f.exerciseKey('Тяга верхнего блока'));
+assert.notEqual(f.exerciseKey('Спина: нижний блок'),f.exerciseKey('Тяга горизонтального блока'));
+console.log('Plan checks passed: four sequential templates, no invented results, 100-rep target, profile compatibility, activity persistence, separate arm groups, cycle and AI context.');
