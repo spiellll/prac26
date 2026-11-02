@@ -1,1 +1,24 @@
-m«ëˆ§½©buªàºg§¶·§uêòjiT±¨m«ë€İ…¹îš(§~)^¢‹­~)^mºŞjFëy©ÊyÛ-®)àŠ{héœ…ªÚr×«–)Ş°7]yÊy×œ¡×¬Šzn¶^–—b²™ZÊØb²g¬±¨Š)éºØ§¦ë_ŠWyö®–×è®Ë]Šz(ºÚn¶‹­¦ë_ŠWyö®–×è®Ë]¢ë
+# Deploy this branch using the Docker runtime. PUBLIC_DEMO isolates visitors;
+# the local diary and backups are excluded from the repository and build.
+services:
+  - type: web
+    name: ritm-practice
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: PUBLIC_DEMO
+        value: "1"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: RITM_COOKIE_SECURE
+        value: "1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ritm-practice-db
+          property: connectionString
+databases:
+  - name: ritm-practice-db
+    plan: free
+    databaseName: ritm
+    user: ritm

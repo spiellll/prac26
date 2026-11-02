@@ -1,1 +1,69 @@
-m«ëˆ§½©buªàºg§¶­Š	è­å,j›jÇºà7an{¦Š)ßŠW¨¢ë_ŠW›n·š‘ºÞjG§r‡^vËkŠx"žÚ'ºg!j¶œµêåŠw¬×^r‡^uç(uë"ž›­†¥¥Ø¬¦V²¶¬™ë,j¢Šzn¶)éº×â•ç^}«¥µú+²×bžŠ.¶›­¢ëiº×â•ç^}«¥µú+²×hº
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/.vinext/
+/out/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+next-env.d.ts
+/dist/
+/.wrangler/
+# Checkout-local execution profile and tool state; never publish them.
+/.sites-runtime/
+/.agents/
+/.codex/
+/outputs/
+/work/
+.dev.vars*
+!.env.example
+*.tsbuildinfo
+
+# Local-only Docker state and snapshot; never publish personal diary data.
+/.docker-runtime/
+/.docker-seed/
+/.docker-seed-*/
+# Personal diary travels with the folder or private transfer archive, not source control.
+/data/*.sqlite
+/data/*.sqlite-*
+/data/backups/
+
+# Python practice backend, generated frontend and local logs
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+frontend-dist/
+*.log
+!log_tools/sample.log

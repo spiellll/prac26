@@ -1,0 +1,66 @@
+# Открыть в VS Code с расширением REST Client либо перенести запросы в Postman.
+# Адрес Python backend. Если API проксируется через сайт, заменить baseUrl.
+# Выполнять по порядку. UUID берётся из ответа создания — сценарий повторяемый.
+@baseUrl = http://127.0.0.1:5001
+@entryId = {{createEntry.response.body.$.entry.id}}
+
+### Проверка сервиса (200)
+GET {{baseUrl}}/api/v1/health
+Accept: application/json
+
+### Список с фильтром и пагинацией (200)
+GET {{baseUrl}}/api/v1/entries?kind=note&page=1&per_page=5
+Accept: application/json
+
+### Создание учебной заметки (201), сервер назначает новую UUID
+# @name createEntry
+POST {{baseUrl}}/api/v1/entries
+Content-Type: application/json
+Accept: application/json
+
+{
+  "date": "2026-07-01",
+  "kind": "note",
+  "text": "Проверка CRUD для летней практики. Синтетическая запись.",
+  "title": "Учебная заметка",
+  "exercises": [],
+  "value": null,
+  "cycleIndex": null,
+  "createdAt": "2026-07-01T10:00:00Z"
+}
+
+### Чтение созданной записи (200)
+GET {{baseUrl}}/api/v1/entries/{{entryId}}
+Accept: application/json
+
+### Частичное изменение только учебной записи (200)
+PATCH {{baseUrl}}/api/v1/entries/{{entryId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "text": "Текст изменён через PATCH. Учебный цикл CRUD выполнен."
+}
+
+### Проверка ошибки валидации (400): неверный тип записи
+POST {{baseUrl}}/api/v1/entries
+Content-Type: application/json
+
+{
+  "id": "22222222-2222-4222-8222-222222222222",
+  "date": "2026-07-01",
+  "kind": "unknown",
+  "text": "Не должно сохраниться",
+  "title": "Ошибочная запись",
+  "exercises": [],
+  "value": null,
+  "cycleIndex": null,
+  "createdAt": "2026-07-01T10:00:00Z"
+}
+
+### Удаление учебной записи (204)
+DELETE {{baseUrl}}/api/v1/entries/{{entryId}}
+
+### После удаления чтение возвращает 404
+GET {{baseUrl}}/api/v1/entries/{{entryId}}
+Accept: application/json
